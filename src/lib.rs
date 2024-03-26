@@ -1,3 +1,4 @@
+use lazy_static::lazy_static;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use std::fmt;
@@ -123,7 +124,7 @@ fn randint() -> usize {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Move {
+pub enum Move {
     Left,
     Right,
     Up,
@@ -131,8 +132,8 @@ enum Move {
 }
 
 impl Move {
-    fn rand() -> Self {
-        Self::from_int((randint() % 4) as u32)
+    pub fn rand(rng: &mut ThreadRng) -> Self {
+        Self::from_int(rng.gen::<u32>() % 4)
     }
 
     fn from_int(i: u32) -> Self {
@@ -186,7 +187,8 @@ impl Board {
         let mut did_move = false;
         for row in 0..4 {
             let oldrow = self.get_row(row);
-            let (score_delta, newrow) = oldrow.shift_left();
+            // let (score_delta, newrow) = oldrow.shift_left();
+            let (newrow, score_delta) = get_cached_move(&oldrow);
             if newrow != oldrow {
                 did_move = true;
             }
@@ -195,7 +197,7 @@ impl Board {
         }
 
         if did_move {
-            Some(score)
+            Some(score as u32)
         } else {
             None
         }
@@ -282,7 +284,7 @@ impl Board {
             | ((self.raw & 0xffff000000000000) >> 48);
     }
 
-    fn add_random_tile(&mut self) {
+    pub fn add_random_tile(&mut self) {
         let empty_spaces: Vec<u8> = (0..16 as u8).filter(|&i| self.at(i) == 0).collect();
         if empty_spaces.len() > 0 {
             // chose random free square to put tile
@@ -350,6 +352,50 @@ impl Row {
     }
 }
 
+#[derive(Clone, Copy)]
+struct MoveCacheElem {
+    after: Row,
+    score: u16,
+}
+
+struct MoveCache {
+    cache: [MoveCacheElem; 1 << 16],
+}
+
+impl MoveCache {
+    fn new() -> Self {
+        println!("Init cache");
+        let default = MoveCacheElem {
+            after: Row::new(),
+            score: 0,
+        };
+        let mut cache = [default; 1 << 16];
+        for i in 0x0000..=0xffff as u16 {
+            let row = Row::from_raw(i);
+            let (score, after) = row.shift_left();
+            // Assume that we're not getting > 65k points in one shift
+            // Won't happen given that I've rarely gotten a single 32k tile
+            let score = score as u16;
+            cache[i as usize] = MoveCacheElem { after, score };
+        }
+        println!("Done Init cache");
+
+        Self { cache }
+    }
+
+    fn get(&self, i: u16) -> MoveCacheElem {
+        self.cache[i as usize]
+    }
+}
+
+fn get_cached_move(row: &Row) -> (Row, u16) {
+    lazy_static! {
+        static ref CACHE: MoveCache = MoveCache::new();
+    }
+    let res = CACHE.get(row.raw);
+    return (res.after, res.score);
+}
+
 pub enum MonteCarloMetric {
     Sum,
     MaxTile,
@@ -382,23 +428,24 @@ impl MonteCarloPlayer {
         mv
     }
 
-    fn explore_move(&self, b: &Board, m: Move) -> u32 {
+    pub fn explore_move(&self, b: &Board, m: Move) -> u32 {
         let mut b: Board = *b;
         let mut score = match b.make_move(m) {
             Some(s) => s,
             None => return 0,
         };
-        for i in 0..self.niter {
-            score += self.random_run(&b);
+        let mut rng = rand::thread_rng();
+        for _ in 0..self.niter {
+            score += self.random_run(&b, &mut rng);
         }
         score
     }
-    fn random_run(&self, b: &Board) -> u32 {
+    pub fn random_run(&self, b: &Board, rng: &mut ThreadRng) -> u32 {
         let mut b: Board = *b;
         let mut nmoves = 0;
         let mut score = 0;
         while !b.game_ended() {
-            if let Some(delta) = b.make_move(Move::rand()) {
+            if let Some(delta) = b.make_move(Move::rand(rng)) {
                 score += delta;
                 nmoves += 1;
                 b.add_random_tile();
