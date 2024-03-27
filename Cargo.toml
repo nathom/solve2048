@@ -12,6 +12,7 @@ const_for = "0.1.4"
 lazy_static = "1.4.0"
 rand = "0.8.5"
 wasm-bindgen = "0.2.92"
+rayon = "1"
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }

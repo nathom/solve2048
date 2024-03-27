@@ -1,12 +1,13 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use solve2048::{monte_carlo_single_game, Board, MonteCarloPlayer, Move};
+use criterion::{criterion_group, criterion_main, Criterion};
+use solve2048::{Board, MonteCarloPlayer, Move};
 
 fn move_left_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
+    let mut rng = rand::thread_rng();
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
 
     c.bench_function("board move left", |b| {
         b.iter(|| {
@@ -17,10 +18,11 @@ fn move_left_benchmark(c: &mut Criterion) {
 
 fn move_right_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
+    let mut rng = rand::thread_rng();
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
 
     c.bench_function("board move right", |b| {
         b.iter(|| {
@@ -31,10 +33,11 @@ fn move_right_benchmark(c: &mut Criterion) {
 
 fn move_up_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
+    let mut rng = rand::thread_rng();
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
 
     c.bench_function("board move up", |b| {
         b.iter(|| {
@@ -45,10 +48,11 @@ fn move_up_benchmark(c: &mut Criterion) {
 
 fn move_down_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
-    brd.add_random_tile();
+    let mut rng = rand::thread_rng();
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
 
     c.bench_function("board move down", |b| {
         b.iter(|| {
@@ -68,13 +72,15 @@ fn random_move_benchmark(c: &mut Criterion) {
 
 fn random_run_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
-    brd.add_random_tile();
-    brd.add_random_tile();
     let mut rng = rand::thread_rng();
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
+    brd.add_random_tile(&mut rng);
     let player = MonteCarloPlayer::default();
     c.bench_function("random game run", |b| {
         b.iter(|| {
-            player.random_run(&brd, &mut rng);
+            player.random_run(&brd);
         })
     });
 }
