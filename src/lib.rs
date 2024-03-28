@@ -3,6 +3,7 @@ mod expectimax;
 mod monte_carlo;
 mod player;
 pub use board::{Board, Move};
+use fastrand::Rng;
 pub use monte_carlo::{MonteCarloMetric, MonteCarloPlayer};
 pub use player::Player;
 use wasm_bindgen::prelude::*;
@@ -21,7 +22,7 @@ mod tests {
     #[test]
     fn board_add_random() {
         let mut b = Board::new();
-        let mut rng = rand::thread_rng();
+        let mut rng = Rng::new();
         b.add_random_tile(&mut rng);
         b.add_random_tile(&mut rng);
         b.add_random_tile(&mut rng);
@@ -195,7 +196,7 @@ mod tests {
 
 pub fn play_game<P: Player>(player: &P) -> (u32, u32) {
     let mut b = Board::new();
-    let mut rng = rand::thread_rng();
+    let mut rng = Rng::new();
     b.add_random_tile(&mut rng);
     b.add_random_tile(&mut rng);
 

@@ -1,6 +1,5 @@
+use fastrand::Rng;
 use lazy_static::lazy_static;
-use rand::rngs::ThreadRng;
-use rand::Rng;
 use std::fmt;
 
 lazy_static! {
@@ -36,8 +35,8 @@ pub enum Move {
 }
 
 impl Move {
-    pub fn rand(rng: &mut ThreadRng) -> Self {
-        Self::from_int(rng.gen::<u32>() % 4)
+    pub fn rand(rng: &mut Rng) -> Self {
+        Self::from_int(rng.u32(0..4))
     }
 
     pub fn from_int(i: u32) -> Self {
@@ -231,7 +230,7 @@ impl Board {
             | ((raw & 0xffff000000000000) >> 48);
     }
 
-    pub fn add_random_tile(&mut self, rng: &mut ThreadRng) {
+    pub fn add_random_tile(&mut self, rng: &mut Rng) {
         // let empty_spaces: [u8; 16] = (0..16 as u8).filter(|&i| self.at(i) == 0).collect();
         let mut len = 0;
         let mut empty_spaces: [u8; 16] = [0; 16];
@@ -243,8 +242,8 @@ impl Board {
         }
         if len > 0 {
             self.set(
-                empty_spaces[rng.gen_range(0..len)],
-                if rng.gen_range(0..10) != 0 { 1 } else { 2 },
+                empty_spaces[rng.usize(0..len)],
+                if rng.u8(0..10) != 0 { 1 } else { 2 },
             );
         }
     }

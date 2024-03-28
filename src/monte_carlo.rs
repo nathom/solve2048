@@ -1,4 +1,5 @@
 use crate::{Board, Move, Player};
+use fastrand::Rng;
 use rayon::prelude::*;
 
 #[derive(Clone)]
@@ -50,7 +51,7 @@ impl MonteCarloPlayer {
             Some(s) => s,
             None => return 0,
         };
-        let mut rng = rand::thread_rng();
+        let mut rng = Rng::new();
         b.add_random_tile(&mut rng);
 
         score += (0..self.niter)
@@ -65,7 +66,7 @@ impl MonteCarloPlayer {
         let mut nmoves = 0;
         let mut score = 0;
         let mut fails = 0;
-        let mut rng = rand::thread_rng();
+        let mut rng = Rng::new();
         // approximation of !game_ended
         while fails < 4 {
             if let Some(delta) = b.make_move(Move::rand(&mut rng)) {
