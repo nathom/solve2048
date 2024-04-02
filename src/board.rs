@@ -1,3 +1,4 @@
+use crunchy::unroll;
 use fastrand::Rng;
 use lazy_static::lazy_static;
 use std::fmt;
@@ -28,10 +29,10 @@ impl fmt::Display for Board {
 
 #[derive(Clone, Copy, Debug)]
 pub enum Move {
-    Left,
-    Right,
     Up,
     Down,
+    Left,
+    Right,
 }
 
 impl Move {
@@ -42,10 +43,19 @@ impl Move {
     pub fn from_int(i: u32) -> Self {
         match i {
             0 => Self::Up,
-            1 => Self::Down,
-            2 => Self::Left,
-            3 => Self::Right,
+            1 => Self::Right,
+            2 => Self::Down,
+            3 => Self::Left,
             _ => panic!(),
+        }
+    }
+
+    pub fn to_int(&self) -> i32 {
+        match self {
+            Move::Up => 0,
+            Move::Right => 1,
+            Move::Down => 2,
+            Move::Left => 3,
         }
     }
 
@@ -61,6 +71,17 @@ impl Board {
 
     pub fn from_raw(raw: u64) -> Self {
         Self { raw }
+    }
+
+    pub fn from_arr(arr: &[i32]) -> Self {
+        let mut b = Board::new();
+        for i in 0..4 {
+            for j in 0..4 {
+                let index: usize = i * 4 + j;
+                b.set(index as u8, arr[index] as u8);
+            }
+        }
+        b
     }
 
     pub fn game_ended(&self) -> bool {
@@ -173,16 +194,16 @@ impl Board {
         res
     }
 
-    pub fn get(&self, i: u8, j: u8) -> u8 {
+    pub const fn get(&self, i: u8, j: u8) -> u8 {
         self.at(i * 4 + j)
     }
 
-    pub fn get_row(&self, i: u8) -> Row {
+    pub const fn get_row(&self, i: u8) -> Row {
         let raw = ((self.raw >> (i << 4)) & 0xffff) as u16;
         Row::from_raw(raw)
     }
 
-    pub fn at(&self, i: u8) -> u8 {
+    pub const fn at(&self, i: u8) -> u8 {
         ((self.raw >> (i << 2)) & 0x0f) as u8
     }
 
@@ -214,7 +235,7 @@ impl Board {
         self.flip_vertical();
     }
 
-    fn flip_horizontal(&mut self) {
+    pub fn flip_horizontal(&mut self) {
         let raw = self.raw;
         self.raw = ((raw & 0x000f000f000f000f) << 12)
             | ((raw & 0x00f000f000f000f0) << 4)
@@ -222,7 +243,7 @@ impl Board {
             | ((raw & 0xf000f000f000f000) >> 12);
     }
 
-    fn flip_vertical(&mut self) {
+    pub fn flip_vertical(&mut self) {
         let raw = self.raw;
         self.raw = ((raw & 0x000000000000ffff) << 48)
             | ((raw & 0x00000000ffff0000) << 16)
@@ -234,10 +255,12 @@ impl Board {
         // let empty_spaces: [u8; 16] = (0..16 as u8).filter(|&i| self.at(i) == 0).collect();
         let mut len = 0;
         let mut empty_spaces: [u8; 16] = [0; 16];
-        for i in 0..16 {
-            if self.at(i) == 0 {
-                empty_spaces[len] = i;
-                len += 1;
+        unroll! {
+            for i in 0..16 {
+                if self.at(i as u8) == 0 {
+                    empty_spaces[len] = i as u8;
+                    len += 1;
+                }
             }
         }
         if len > 0 {
@@ -274,7 +297,6 @@ impl MoveCache {
             let score = score as u16;
             left_cache[i as usize] = MoveCacheElem { after, score };
         }
-
         Self { left_cache }
     }
 
@@ -308,10 +330,10 @@ impl fmt::Display for Row {
 }
 
 impl Row {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { raw: 0 }
     }
-    pub fn from_raw(r: u16) -> Self {
+    pub const fn from_raw(r: u16) -> Self {
         Self { raw: r }
     }
     pub fn get(&self, i: u8) -> u8 {

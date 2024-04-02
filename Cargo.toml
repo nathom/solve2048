@@ -8,12 +8,23 @@ edition = "2021"
 # crate-type = ["cdylib"]
 
 [dependencies]
-const_for = "0.1.4"
 lazy_static = "1.4.0"
-rand = "0.8.5"
 wasm-bindgen = "0.2.92"
 rayon = "1"
 fastrand = "2.0.2"
+crunchy = "0.2.2"
+const_for = "0.1.4"
+[dependencies.web-sys]
+web-sys = "0.3.69"
+features = [
+  'Document',
+  'Element',
+  'HtmlElement',
+  'Node',
+  'Window',
+  'Blob',
+  'FileReader',
+]
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
@@ -21,3 +32,6 @@ criterion = { version = "0.4", features = ["html_reports"] }
 [[bench]]
 name = "monte_carlo"
 harness = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]

@@ -55,7 +55,7 @@ impl MonteCarloPlayer {
         b.add_random_tile(&mut rng);
 
         score += (0..self.niter)
-            // .into_par_iter()
+            .into_par_iter()
             .map(|_| self.random_run(&b))
             .sum::<u32>();
 

@@ -1,12 +1,15 @@
 mod board;
 mod expectimax;
 mod monte_carlo;
+mod ntuple;
 mod player;
 pub use board::{Board, Move};
 use fastrand::Rng;
 pub use monte_carlo::{MonteCarloMetric, MonteCarloPlayer};
+pub use ntuple::{NTuple, NTuplePlayer};
 pub use player::Player;
 use wasm_bindgen::prelude::*;
+use web_sys;
 
 #[cfg(test)]
 mod tests {
@@ -226,11 +229,30 @@ pub fn play_monte_carlo(niter: u32, ngames: u32, metric: MonteCarloMetric) {
 }
 
 #[wasm_bindgen]
-extern "C" {
-    pub fn alert(s: &str);
+pub fn get_ntuple_net_from_js_blob(blob: web_sys::Blob) -> NTuple {
+    let reader = web_sys::FileReader::new().unwrap();
+    reader.read_as_array_buffer(&blob).unwrap();
+    let ntuple = NTuple::load(reader.result().unwrap().as_ref().unwrap());
+    ntuple
 }
 
 #[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {}!", name));
+extern "C" {
+    fn alert(s: &str);
+}
+
+#[wasm_bindgen]
+pub fn monte_carlo(arr: &[i32]) -> i32 {
+    let b = Board::from_arr(arr);
+    let next_move = MonteCarloPlayer::default().next_move(&b);
+    next_move.unwrap().to_int()
+}
+
+#[wasm_bindgen]
+pub fn play_game_ntuple() {
+    let weights_url = "https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin";
+    let network = NTuple::load(weights_url);
+    let player = NTuplePlayer::new();
+    let (score, max) = play_game(&player);
+    alert(&format!("Score: {} Max: {}", score, max));
 }
