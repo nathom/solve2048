@@ -1,3 +1,4 @@
+use crate::MoveRecord;
 use crunchy::unroll;
 use fastrand::Rng;
 use lazy_static::lazy_static;
@@ -7,7 +8,7 @@ lazy_static! {
     static ref CACHE: MoveCache = MoveCache::new();
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Board {
     pub raw: u64,
 }
@@ -18,7 +19,7 @@ impl fmt::Display for Board {
         for y in 0..4 {
             for x in 0..4 {
                 let value = self.get(x, y);
-                board_str.push_str(&format!("{} ", value));
+                board_str.push_str(&format!("{} ", if value == 0 { 0 } else { 1u32 << value }));
             }
             board_str.pop(); // Remove the last space
             board_str.push('\n'); // Newline after each row
@@ -59,6 +60,7 @@ impl Move {
         }
     }
 
+    #[inline(always)]
     pub fn all() -> [Move; 4] {
         return [Move::Up, Move::Down, Move::Left, Move::Right];
     }
@@ -97,8 +99,12 @@ impl Board {
         (0..16).map(|i| 1u32 << self.at(i)).sum()
     }
 
+    pub fn log_max_tile(&self) -> u8 {
+        (0..16).map(|i| self.at(i)).max().unwrap()
+    }
+
     pub fn max_tile(&self) -> u32 {
-        1u32 << (0..16).map(|i| self.at(i)).max().unwrap()
+        1u32 << (self.log_max_tile() as u32)
     }
 
     pub fn make_move(&mut self, m: Move) -> Option<u32> {
@@ -108,6 +114,15 @@ impl Board {
             Move::Left => self.move_left(),
             Move::Right => self.move_right(),
         }
+    }
+
+    pub fn make_move_and_record(&mut self, m: Move) -> Option<MoveRecord> {
+        let score = self.make_move(m)?;
+        return Some(MoveRecord {
+            m,
+            board_after: *self,
+            score,
+        });
     }
 
     pub fn move_left(&mut self) -> Option<u32> {
@@ -216,7 +231,7 @@ impl Board {
         self.raw = (self.raw & !((0xffff as u64) << (i << 4))) | ((row as u64) << (i << 4));
     }
 
-    fn transpose(&mut self) {
+    pub fn transpose(&mut self) {
         let step1 = (self.raw & 0xf0f00f0ff0f00f0f)
             | ((self.raw & 0x0000f0f00000f0f0) << 12)
             | ((self.raw & 0x0f0f00000f0f0000) >> 12);
@@ -251,6 +266,18 @@ impl Board {
             | ((raw & 0xffff000000000000) >> 48);
     }
 
+    pub fn num_empty(&self) -> u8 {
+        let mut len = 0;
+        unroll! {
+            for i in 0..16 {
+                if self.at(i as u8) == 0 {
+                    len += 1;
+                }
+            }
+        }
+        len
+    }
+
     pub fn add_random_tile(&mut self, rng: &mut Rng) {
         // let empty_spaces: [u8; 16] = (0..16 as u8).filter(|&i| self.at(i) == 0).collect();
         let mut len = 0;
@@ -269,6 +296,25 @@ impl Board {
                 if rng.u8(0..10) != 0 { 1 } else { 2 },
             );
         }
+    }
+
+    pub fn rotate(&mut self, r: u32) {
+        let r = r % 4;
+        match r {
+            0 => (),
+            1 => self.clockwise(),
+            2 => self.flip_vertical(),
+            3 => self.counterclockwise(),
+            _ => panic!("Invalid value for r"),
+        }
+    }
+
+    pub fn distinct_tiles(&self) -> u8 {
+        let mut tiles = [false; 16];
+        for i in 0..16 {
+            tiles[self.at(i) as usize] = true;
+        }
+        tiles.iter().filter(|&&x| x).count() as u8
     }
 }
 

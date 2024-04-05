@@ -22,14 +22,10 @@ impl Player for MonteCarloPlayer {
             .iter()
             .map(|&m| (m, self.explore_move(b, m)))
             .filter(|&(_, s)| s > 0)
-            .max_by_key(|&(_, s)| s);
+            .max_by_key(|&(_, s)| s)?;
 
-        if let Some((mv, _)) = res {
-            return Some(mv);
-        } else {
-            // no moves possible
-            return None;
-        }
+        let (mv, _) = res;
+        Some(mv)
     }
 }
 

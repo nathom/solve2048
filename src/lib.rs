@@ -4,12 +4,14 @@ mod monte_carlo;
 mod ntuple;
 mod player;
 pub use board::{Board, Move};
+pub use expectimax::ExpectimaxPlayer;
 use fastrand::Rng;
 pub use monte_carlo::{MonteCarloMetric, MonteCarloPlayer};
-pub use ntuple::{NTuple, NTuplePlayer};
+pub use ntuple::{Feature, MoveRecord, NTuple};
 pub use player::Player;
+use std::fs::File;
+use std::io::BufWriter;
 use wasm_bindgen::prelude::*;
-use web_sys;
 
 #[cfg(test)]
 mod tests {
@@ -197,7 +199,7 @@ mod tests {
     }
 }
 
-pub fn play_game<P: Player>(player: &P) -> (u32, u32) {
+pub fn play_game<P: Player>(player: &P, show_moves: bool) -> (u32, u32) {
     let mut b = Board::new();
     let mut rng = Rng::new();
     b.add_random_tile(&mut rng);
@@ -214,6 +216,10 @@ pub fn play_game<P: Player>(player: &P) -> (u32, u32) {
             score += s;
             b.add_random_tile(&mut rng);
         }
+
+        if show_moves {
+            println!("{b}");
+        }
     }
     let max_tile = b.max_tile();
     return (score, max_tile);
@@ -223,17 +229,94 @@ pub fn play_monte_carlo(niter: u32, ngames: u32, metric: MonteCarloMetric) {
     let player = MonteCarloPlayer::new(niter, metric);
 
     for i in 0..ngames {
-        let (score, max) = play_game(&player);
+        let (score, max) = play_game(&player, false);
         println!("Game {i}: Score: {score} Max: {max}");
     }
 }
 
-#[wasm_bindgen]
-pub fn get_ntuple_net_from_js_blob(blob: web_sys::Blob) -> NTuple {
-    let reader = web_sys::FileReader::new().unwrap();
-    reader.read_as_array_buffer(&blob).unwrap();
-    let ntuple = NTuple::load(reader.result().unwrap().as_ref().unwrap());
-    ntuple
+pub fn tdl_learn(save_path: &str, alpha: f32, ngames: u32) {
+    let mut net = NTuple::default();
+
+    let mut rng = Rng::new();
+    let mut path = Vec::with_capacity(20000);
+
+    let print_stats_every = 1000;
+
+    let mut score_total = 0;
+    let mut max_tile_total = 0;
+    let mut moves_total = 0;
+    let mut tile_counter = [0; 16];
+
+    let threads = 10;
+    for n in (1..=ngames).step_by(threads) {
+        let mut b = Board::new();
+        b.add_random_tile(&mut rng);
+        b.add_random_tile(&mut rng);
+        let mut score = 0;
+        let mut moves = 0;
+
+        loop {
+            let mv = net.next_move(&b);
+            if mv.is_none() {
+                break;
+            }
+            let mv = mv.unwrap();
+            moves += 1;
+
+            let rec = b.make_move_and_record(mv).unwrap();
+            b.add_random_tile(&mut rng);
+            score += rec.score;
+            path.push(rec);
+        }
+
+        net.backward(&mut path, alpha);
+        path.clear();
+
+        if n % print_stats_every == 0 {
+            let max_tile_avg = max_tile_total as f32 / print_stats_every as f32;
+            let score_avg = score_total as f32 / print_stats_every as f32;
+            let moves_avg = moves_total as f32 / print_stats_every as f32;
+            println!("Game {n}: Score: {score_avg} Max: {max_tile_avg} Moves: {moves_avg}");
+            print_tile_freq(&tile_counter);
+            score_total = 0;
+            max_tile_total = 0;
+            moves_total = 0;
+            tile_counter = [0; 16];
+        }
+        score_total += score;
+        max_tile_total += b.max_tile();
+        moves_total += moves;
+        tile_counter[b.log_max_tile() as usize] += 1;
+    }
+
+    // write bytes to filepath
+    let mut file = File::create(save_path).unwrap();
+    let mut writer = BufWriter::new(&mut file);
+    net.save_weights(&mut writer);
+}
+
+fn print_tile_freq(tile_counter: &[u32; 16]) {
+    let tile_sum: u32 = tile_counter.iter().sum();
+    let mut cumulative = [0; 16];
+    let mut sum = 0;
+    for i in (0..16).rev() {
+        sum += tile_counter[i];
+        cumulative[i] = sum;
+    }
+    let cum_max = cumulative[0];
+    println!("==== Tile Frequency ====");
+    for i in 0..16 {
+        let freq = tile_counter[i] as f32 / tile_sum as f32;
+        let cum_freq = cumulative[i] as f32 / cum_max as f32;
+        if freq > 0.0 {
+            let percent = freq * 100.0;
+            let cum_percent = cum_freq * 100.0;
+            let tile = 1u32 << i;
+            println!("{tile}: {percent:.2}% ({cum_percent:.2}%)");
+            // pad the output as if it were a table
+        }
+    }
+    println!("========================\n");
 }
 
 #[wasm_bindgen]
@@ -245,14 +328,37 @@ extern "C" {
 pub fn monte_carlo(arr: &[i32]) -> i32 {
     let b = Board::from_arr(arr);
     let next_move = MonteCarloPlayer::default().next_move(&b);
-    next_move.unwrap().to_int()
+    match next_move {
+        Some(m) => m.to_int(),
+        None => -1,
+    }
 }
 
 #[wasm_bindgen]
-pub fn play_game_ntuple() {
-    let weights_url = "https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin";
-    let network = NTuple::load(weights_url);
-    let player = NTuplePlayer::new();
-    let (score, max) = play_game(&player);
-    alert(&format!("Score: {} Max: {}", score, max));
+pub fn expectimax(arr: &[i32]) -> i32 {
+    let b = Board::from_arr(arr);
+    let next_move = ExpectimaxPlayer::default().next_move(&b);
+    match next_move {
+        Some(m) => m.to_int(),
+        None => -1,
+    }
+}
+
+#[wasm_bindgen]
+pub fn build_ntuple(weights: &[u8]) -> NTuple {
+    console_error_panic_hook::set_once();
+    let mut net = NTuple::default();
+    net.load_weights(&mut weights.as_ref());
+    net
+}
+
+#[wasm_bindgen]
+pub fn ntuple(net: &NTuple, arr: &[i32]) -> i32 {
+    // statically load the network weights
+    let b = Board::from_arr(arr);
+    let next_move = net.next_move(&b);
+    match next_move {
+        Some(m) => m.to_int(),
+        None => -1,
+    }
 }
