@@ -3,17 +3,14 @@ name = "solve2048"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-# [lib]
-# crate-type = ["cdylib"]
-
 [dependencies]
 lazy_static = "1.4.0"
 wasm-bindgen = "0.2.92"
 rayon = "1"
 fastrand = "2.0.2"
+console_error_panic_hook = "0.1.7"
 crunchy = "0.2.2"
-const_for = "0.1.4"
+
 [dependencies.web-sys]
 web-sys = "0.3.69"
 features = [

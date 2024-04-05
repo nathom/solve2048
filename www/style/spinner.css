@@ -1,0 +1,28 @@
+.infinity-6 {
+  width: 60px;
+  aspect-ratio: 1;
+  --g: conic-gradient(from -90deg at 10px 10px, #000 90deg, #0000 0);
+  background: var(--g), var(--g), var(--g);
+  background-size: 50% 50%;
+  animation: i6 1s infinite;
+}
+@keyframes i6 {
+  0% {
+    background-position:
+      0 0,
+      10px 10px,
+      20px 20px;
+  }
+  50% {
+    background-position:
+      0 20px,
+      10px 10px,
+      20px 0;
+  }
+  100% {
+    background-position:
+      20px 20px,
+      10px 10px,
+      0 0;
+  }
+}
