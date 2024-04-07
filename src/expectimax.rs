@@ -65,13 +65,13 @@ impl ExpectimaxPlayer {
         if b_copy.make_move(m).is_some() {
             // if the move is valid, explore
             let res = self_copy.random_player_score(&b_copy, 1.0, &mut map) + 1e-6;
-            println!(
-                "For move {:?}: moves simulated: {} cache size: {}, cache hits: {}",
-                m,
-                self_copy.moves_simulated,
-                map.len(),
-                self_copy.cache_hits
-            );
+            // println!(
+            //     "For move {:?}: moves simulated: {} cache size: {}, cache hits: {}",
+            //     m,
+            //     self_copy.moves_simulated,
+            //     map.len(),
+            //     self_copy.cache_hits
+            // );
             res
         } else {
             0.0
