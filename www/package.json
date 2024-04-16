@@ -30,10 +30,12 @@
         "solve2048": "file:../pkg"
     },
     "devDependencies": {
+        "@rollup/plugin-node-resolve": "^15.2.3",
+        "@rollup/plugin-wasm": "^6.2.2",
+        "copy-webpack-plugin": "^5.0.0",
         "hello-wasm-pack": "^0.1.0",
         "webpack": "^4.29.3",
         "webpack-cli": "^3.1.0",
-        "webpack-dev-server": "^3.1.5",
-        "copy-webpack-plugin": "^5.0.0"
+        "webpack-dev-server": "^3.1.5"
     }
 }
