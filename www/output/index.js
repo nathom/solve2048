@@ -494,7 +494,7 @@ class Grid {
 
 // convert the below code to ES6 class syntax:
 class GameManager {
-    constructor(size, InputManager, Actuator, StorageManager, weights_promise)
+    constructor(size, InputManager, Actuator, StorageManager, weightsUrl)
     {
         this.size = size;
         this.inputManager = new InputManager;
@@ -509,13 +509,16 @@ class GameManager {
         this.inputManager.on('randomMove', this.toggleAgent.bind(this));
         this.inputManager.handleDropdownEvent(
             this.handleDropdownEvent.bind(this));
+        this.inputManager.setWeightsUrl(weightsUrl);
         this.mode = 'random';
+
         this.cancelRequest = false;
         // get weights as blob of bytes from
         // https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin
-        this.weightsPromise = weights_promise;
+        this.weightsUrl = weightsUrl;
+        this.weightsPromise = null;
         this.downloadingWeights = false;
-        this.tuple = null;
+        this.tupleNetwork = null;
         this.setup();
     }
 
@@ -538,7 +541,10 @@ class GameManager {
             break;
         case 'ntuple-item':
             this.mode = 'ntuple';
-            this.showNtupleFooter();
+            this.inputManager.showNTupleFooter();
+            if (this.weightsPromise === null) {
+                this.weightsPromise = this.inputManager.downloadWeights();
+            }
             break;
         default:
             this.mode = 'default';
@@ -765,6 +771,26 @@ class GameManager {
             this.inputManager.shakeAgentsButton();
             return;
         }
+        if (this.mode == 'ntuple' && this.tupleNetwork === null) {
+            if (!this.downloadingWeights) {
+                // ensure only one copy of the weights are ever downloaded
+                this.downloadingWeights = true;
+                if (this.weightsPromise === null) {
+                    console.error('Weights promise is null, recovering');
+                    // This should never run since weightsPromise is set
+                    // when the mode is set to 'ntuple'
+                    // Leaving it just in case
+                    this.weightsPromise = this.inputManager.downloadWeights();
+                }
+                console.log('Downloading weights');
+                let weights = await this.weightsPromise;
+                console.log('Done downloading weights', weights);
+                this.tupleNetwork = build_ntuple(weights);
+            }
+
+            this.inputManager.shakeProgressBar();
+            return;
+        }
 
         console.log('Activate on');
         this.inputManager.activationButtonOn();
@@ -773,17 +799,6 @@ class GameManager {
         } else if (this.mode === 'montecarlo') {
             await this.playMonteCarlo();
         } else if (this.mode === 'ntuple') {
-            if (this.tuple === null) {
-                if (!this.downloadingWeights) {
-                    this.downloadingWeights = true;
-                    console.log('Downloading weights');
-                    let weights = await this.weightsPromise;
-                    console.log('Done downloading weights', weights);
-                    this.tuple = build_ntuple(weights);
-                } else {
-                    return;
-                }
-            }
             await this.playNtuple();
         } else if (this.mode === 'random') {
             await this.playRandom();
@@ -799,8 +814,8 @@ class GameManager {
 
     async playNtuple()
     {
-        if (this.tuple === null) return;
-        await this.playGame(arr => ntuple(this.tuple, arr));
+        if (this.tupleNetwork === null) return;
+        await this.playGame(arr => ntuple(this.tupleNetwork, arr));
     }
 
     boardAsArray()
@@ -1002,6 +1017,45 @@ class HTMLActuator {
     }
 }
 
+async function downloadFile(url, progressCallback)
+{
+    if (!url) {
+        alert('No URL provided');
+        return;
+    }
+    const response = await fetch(url);
+    const contentLength = parseInt(
+        response.headers.get('content-length'),
+        10);  // Parse content-length as integer
+    const reader = response.body.getReader();
+    let receivedLength = 0;  // Track the total number of bytes downloaded
+    let chunks = [];         // Array to store downloaded chunks
+
+    while (true) {
+        const {done, value} = await reader.read();
+
+        if (done) {
+            break;
+        }
+
+        chunks.push(value);
+        receivedLength += value.length;
+        progressCallback(receivedLength, contentLength);
+    }
+
+    // Concatenate all the downloaded chunks into a single Uint8Array
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    let offset = 0;
+    const uint8Array = new Uint8Array(totalLength);
+
+    for (const chunk of chunks) {
+        uint8Array.set(chunk, offset);
+        offset += chunk.length;
+    }
+
+    return uint8Array;
+}
+
 class KeyboardInputManager {
     constructor()
     {
@@ -1019,6 +1073,15 @@ class KeyboardInputManager {
         }
 
         this.delay = 100;
+        this.weightsUrl = null;
+
+        const progressContainer = document.querySelector('.progress-container');
+        this.showNTupleFooter = () => {
+            progressContainer.style.display = 'flex';
+        };
+        this.hideNTupleFooter = () => {
+            progressContainer.style.display = 'none';
+        };
 
         this.sliderHandler();
         this.listen();
@@ -1181,10 +1244,16 @@ class KeyboardInputManager {
         });
     };
 
+
+    setWeightsUrl(url)
+    {
+        this.weightsUrl = url;
+    }
+
     shakeAgentsButton()
     {
         // Get the button element
-        var button = document.querySelector('.dropbtn');
+        let button = document.querySelector('.dropbtn');
 
         console.log('Shaking the agents button');
         // Add event listener to trigger the shaking effect
@@ -1194,6 +1263,18 @@ class KeyboardInputManager {
         // After a short delay, remove the CSS class to stop the animation
         setTimeout(function() {
             button.classList.remove('shake-animation');
+        }, 500);  // Duration of the shake animation (0.5s)
+    }
+
+    shakeProgressBar()
+    {
+        let bar = document.querySelector('.progress-container');
+
+        console.log('Shaking the progress bar');
+        bar.classList.add('shake-animation');
+
+        setTimeout(function() {
+            bar.classList.remove('shake-animation');
         }, 500);  // Duration of the shake animation (0.5s)
     }
 
@@ -1215,6 +1296,10 @@ class KeyboardInputManager {
             break;
         case 'ntuple':
             text = 'N-Tuple';
+            if (this.weightsUrl === null) {
+                console.error('Weights URL is not set');
+                this.shakeAgentsButton();
+            }
             break;
         case 'random':
             text = 'Random';
@@ -1265,9 +1350,9 @@ class KeyboardInputManager {
     sliderHandler()
     {
         // Get the range input element
-        var delayRange = document.getElementById('delay-range');
+        let delayRange = document.getElementById('delay-range');
         // Get the label element
-        var delayLabel = document.getElementById('delay-label');
+        let delayLabel = document.getElementById('delay-label');
 
         // Add event listener to the range input
         delayRange.addEventListener('input', () => {
@@ -1276,6 +1361,34 @@ class KeyboardInputManager {
             delayLabel.textContent = 'Delay: ' + delayRange.value + ' ms';
             this.delay = delayRange.value;
         });
+    }
+
+    downloadWeights()
+    {
+        let progressBar = document.getElementById('download-bar');
+        let progressText = document.getElementById('download-progress-label');
+        return downloadFile(
+            this.weightsUrl, (receivedLength, contentLength) => {
+                this.setDownloadProgress(
+                    receivedLength, contentLength, progressBar, progressText);
+            });
+    }
+
+    setDownloadProgress(
+        receivedLength, contentLength, progressBar, progressText)
+    {
+        const receivedLengthMB = Math.round(receivedLength / 1024 / 1024);
+        const contentLengthMB = Math.round(contentLength / 1024 / 1024);
+
+        progressBar.style.width =
+            (100.0 * receivedLength / contentLength) + '%';
+        progressText.textContent =
+            `Downloading Weights (${receivedLengthMB}/${contentLengthMB} MB): `;
+
+        if (receivedLength == contentLength) {
+            let progressColor = document.querySelector('.color');
+            progressColor.style.backgroundColor = 'green';
+        }
     }
 }
 
@@ -1345,18 +1458,16 @@ class LocalStorageManager {
 
 function init_game(wasm_path)
 {
+    const weights_url =
+        'https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin';
     __wbg_init(wasm_path).then(() => {
-        let weights_promise =
-            fetch(
-                'https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin')
-                .then(r => r.arrayBuffer())
-                .then(b => new Uint8Array(b));
+        // let weights_promise = downloadFile(weights_url);
 
         // Wait till the browser is ready to render the game (avoids glitches)
         window.requestAnimationFrame(function() {
             new GameManager(
                 4, KeyboardInputManager, HTMLActuator, LocalStorageManager,
-                weights_promise, wasm$1);
+                weights_url, wasm$1);
         });
     });
 }

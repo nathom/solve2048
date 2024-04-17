@@ -5,7 +5,7 @@ import Tile from './tile';
 
 // convert the below code to ES6 class syntax:
 export default class GameManager {
-    constructor(size, InputManager, Actuator, StorageManager, weights_promise)
+    constructor(size, InputManager, Actuator, StorageManager, weightsUrl)
     {
         this.size = size;
         this.inputManager = new InputManager;
@@ -20,13 +20,16 @@ export default class GameManager {
         this.inputManager.on('randomMove', this.toggleAgent.bind(this));
         this.inputManager.handleDropdownEvent(
             this.handleDropdownEvent.bind(this));
+        this.inputManager.setWeightsUrl(weightsUrl);
         this.mode = 'random';
+
         this.cancelRequest = false;
         // get weights as blob of bytes from
         // https://huggingface.co/nathom/ntuple-2048/resolve/main/tuplenet_4M_lr.bin
-        this.weightsPromise = weights_promise;
+        this.weightsUrl = weightsUrl;
+        this.weightsPromise = null;
         this.downloadingWeights = false;
-        this.tuple = null;
+        this.tupleNetwork = null;
         this.setup();
     }
 
@@ -49,7 +52,10 @@ export default class GameManager {
             break;
         case 'ntuple-item':
             this.mode = 'ntuple';
-            this.showNtupleFooter();
+            this.inputManager.showNTupleFooter();
+            if (this.weightsPromise === null) {
+                this.weightsPromise = this.inputManager.downloadWeights();
+            }
             break;
         default:
             this.mode = 'default';
@@ -276,6 +282,26 @@ export default class GameManager {
             this.inputManager.shakeAgentsButton();
             return;
         }
+        if (this.mode == 'ntuple' && this.tupleNetwork === null) {
+            if (!this.downloadingWeights) {
+                // ensure only one copy of the weights are ever downloaded
+                this.downloadingWeights = true;
+                if (this.weightsPromise === null) {
+                    console.error('Weights promise is null, recovering');
+                    // This should never run since weightsPromise is set
+                    // when the mode is set to 'ntuple'
+                    // Leaving it just in case
+                    this.weightsPromise = this.inputManager.downloadWeights();
+                }
+                console.log('Downloading weights');
+                let weights = await this.weightsPromise;
+                console.log('Done downloading weights', weights);
+                this.tupleNetwork = wasm.build_ntuple(weights);
+            }
+
+            this.inputManager.shakeProgressBar();
+            return;
+        }
 
         console.log('Activate on');
         this.inputManager.activationButtonOn();
@@ -284,17 +310,6 @@ export default class GameManager {
         } else if (this.mode === 'montecarlo') {
             await this.playMonteCarlo();
         } else if (this.mode === 'ntuple') {
-            if (this.tuple === null) {
-                if (!this.downloadingWeights) {
-                    this.downloadingWeights = true;
-                    console.log('Downloading weights');
-                    let weights = await this.weightsPromise;
-                    console.log('Done downloading weights', weights);
-                    this.tuple = wasm.build_ntuple(weights);
-                } else {
-                    return;
-                }
-            }
             await this.playNtuple();
         } else if (this.mode === 'random') {
             await this.playRandom();
@@ -310,8 +325,8 @@ export default class GameManager {
 
     async playNtuple()
     {
-        if (this.tuple === null) return;
-        await this.playGame(arr => wasm.ntuple(this.tuple, arr));
+        if (this.tupleNetwork === null) return;
+        await this.playGame(arr => wasm.ntuple(this.tupleNetwork, arr));
     }
 
     boardAsArray()

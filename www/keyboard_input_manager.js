@@ -1,3 +1,4 @@
+import {downloadFile} from './network';
 export default class KeyboardInputManager {
     constructor()
     {
@@ -15,6 +16,15 @@ export default class KeyboardInputManager {
         }
 
         this.delay = 100;
+        this.weightsUrl = null;
+
+        const progressContainer = document.querySelector('.progress-container');
+        this.showNTupleFooter = () => {
+            progressContainer.style.display = 'flex';
+        };
+        this.hideNTupleFooter = () => {
+            progressContainer.style.display = 'none';
+        };
 
         this.sliderHandler();
         this.listen();
@@ -177,10 +187,16 @@ export default class KeyboardInputManager {
         });
     };
 
+
+    setWeightsUrl(url)
+    {
+        this.weightsUrl = url;
+    }
+
     shakeAgentsButton()
     {
         // Get the button element
-        var button = document.querySelector('.dropbtn');
+        let button = document.querySelector('.dropbtn');
 
         console.log('Shaking the agents button');
         // Add event listener to trigger the shaking effect
@@ -190,6 +206,18 @@ export default class KeyboardInputManager {
         // After a short delay, remove the CSS class to stop the animation
         setTimeout(function() {
             button.classList.remove('shake-animation');
+        }, 500);  // Duration of the shake animation (0.5s)
+    }
+
+    shakeProgressBar()
+    {
+        let bar = document.querySelector('.progress-container');
+
+        console.log('Shaking the progress bar');
+        bar.classList.add('shake-animation');
+
+        setTimeout(function() {
+            bar.classList.remove('shake-animation');
         }, 500);  // Duration of the shake animation (0.5s)
     }
 
@@ -211,6 +239,10 @@ export default class KeyboardInputManager {
             break;
         case 'ntuple':
             text = 'N-Tuple';
+            if (this.weightsUrl === null) {
+                console.error('Weights URL is not set');
+                this.shakeAgentsButton();
+            }
             break;
         case 'random':
             text = 'Random';
@@ -261,9 +293,9 @@ export default class KeyboardInputManager {
     sliderHandler()
     {
         // Get the range input element
-        var delayRange = document.getElementById('delay-range');
+        let delayRange = document.getElementById('delay-range');
         // Get the label element
-        var delayLabel = document.getElementById('delay-label');
+        let delayLabel = document.getElementById('delay-label');
 
         // Add event listener to the range input
         delayRange.addEventListener('input', () => {
@@ -272,5 +304,33 @@ export default class KeyboardInputManager {
             delayLabel.textContent = 'Delay: ' + delayRange.value + ' ms';
             this.delay = delayRange.value;
         });
+    }
+
+    downloadWeights()
+    {
+        let progressBar = document.getElementById('download-bar');
+        let progressText = document.getElementById('download-progress-label');
+        return downloadFile(
+            this.weightsUrl, (receivedLength, contentLength) => {
+                this.setDownloadProgress(
+                    receivedLength, contentLength, progressBar, progressText);
+            });
+    }
+
+    setDownloadProgress(
+        receivedLength, contentLength, progressBar, progressText)
+    {
+        const receivedLengthMB = Math.round(receivedLength / 1024 / 1024);
+        const contentLengthMB = Math.round(contentLength / 1024 / 1024);
+
+        progressBar.style.width =
+            (100.0 * receivedLength / contentLength) + '%';
+        progressText.textContent =
+            `Downloading Weights (${receivedLengthMB}/${contentLengthMB} MB): `;
+
+        if (receivedLength == contentLength) {
+            let progressColor = document.querySelector('.color');
+            progressColor.style.backgroundColor = 'green';
+        }
     }
 }
