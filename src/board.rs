@@ -1,5 +1,4 @@
 use crate::MoveRecord;
-use crunchy::unroll;
 use fastrand::Rng;
 use lazy_static::lazy_static;
 use std::fmt;
@@ -268,11 +267,9 @@ impl Board {
 
     pub fn num_empty(&self) -> u8 {
         let mut len = 0;
-        unroll! {
-            for i in 0..16 {
-                if self.at(i as u8) == 0 {
-                    len += 1;
-                }
+        for i in 0..16 {
+            if self.at(i as u8) == 0 {
+                len += 1;
             }
         }
         len
@@ -282,12 +279,10 @@ impl Board {
         // let empty_spaces: [u8; 16] = (0..16 as u8).filter(|&i| self.at(i) == 0).collect();
         let mut len = 0;
         let mut empty_spaces: [u8; 16] = [0; 16];
-        unroll! {
-            for i in 0..16 {
-                if self.at(i as u8) == 0 {
-                    empty_spaces[len] = i as u8;
-                    len += 1;
-                }
+        for i in 0..16 {
+            if self.at(i as u8) == 0 {
+                empty_spaces[len] = i as u8;
+                len += 1;
             }
         }
         if len > 0 {
