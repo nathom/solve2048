@@ -249,6 +249,9 @@ async function __wbg_load(module, imports) {
 function __wbg_get_imports() {
     const imports = {};
     imports.wbg = {};
+    imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
+        takeObject(arg0);
+    };
     imports.wbg.__wbg_new_abda76e883ba8a5f = function() {
         const ret = new Error();
         return addHeapObject(ret);
@@ -270,9 +273,6 @@ function __wbg_get_imports() {
         } finally {
             wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
         }
-    };
-    imports.wbg.__wbindgen_object_drop_ref = function(arg0) {
-        takeObject(arg0);
     };
     imports.wbg.__wbindgen_throw = function(arg0, arg1) {
         throw new Error(getStringFromWasm0(arg0, arg1));
@@ -782,9 +782,7 @@ class GameManager {
                     // Leaving it just in case
                     this.weightsPromise = this.inputManager.downloadWeights();
                 }
-                console.log('Downloading weights');
                 let weights = await this.weightsPromise;
-                console.log('Done downloading weights', weights);
                 this.tupleNetwork = build_ntuple(weights);
             }
 
@@ -792,7 +790,6 @@ class GameManager {
             return;
         }
 
-        console.log('Activate on');
         this.inputManager.activationButtonOn();
         if (this.mode === 'expectimax') {
             await this.playExpectimax();
@@ -803,7 +800,6 @@ class GameManager {
         } else if (this.mode === 'random') {
             await this.playRandom();
         }
-        console.log('Activate off');
         this.inputManager.activationButtonOff();
     }
 
@@ -1230,6 +1226,15 @@ class KeyboardInputManager {
     handleDropdownEvent(callback)
     {
         const dropdownContent = document.querySelector('.dropdown-content');
+        const dropdownBtn = document.querySelector('.dropbtn');
+
+        dropdownBtn.addEventListener('mouseenter', function() {
+            dropdownContent.style.display = 'block';
+        });
+        dropdownBtn.addEventListener('click', function() {
+            dropdownContent.style.display = 'block';
+        });
+
         dropdownContent.addEventListener('click', event => {
             // Check if the clicked element is a dropdown item (an <a> tag)
             if (event.target.tagName === 'A') {
@@ -1240,6 +1245,9 @@ class KeyboardInputManager {
                 const selectedItem = event.target.id;
                 console.log('selected ', selectedItem);
                 callback(selectedItem);
+
+                // dropdownContent.classList.remove('show');
+                dropdownContent.style.display = 'none';
             }
         });
     };

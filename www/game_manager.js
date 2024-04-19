@@ -400,6 +400,4 @@ export default class GameManager {
     {
         return first.x === second.x && first.y === second.y;
     }
-
-    showNtupleFooter() {}
 }
