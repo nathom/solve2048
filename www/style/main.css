@@ -678,6 +678,10 @@ hr {
   text-align: center;
   float: left;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 
 .random-move-button {
@@ -694,6 +698,10 @@ hr {
   float: left;
   margin-left: 10px;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 
 .agent-settings {
@@ -746,6 +754,10 @@ hr {
   text-align: center;
   float: left;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 .dropdown-content {
   display: none;
@@ -770,9 +782,9 @@ hr {
 .dropdown-content a:hover {
   background-color: #8f7a66; /* Slightly darker on hover */
 }
-.dropdown:hover .dropdown-content {
-  display: block;
-}
+/* .dropdown:hover .dropdown-content { */
+/*   display: block; */
+/* } */
 
 .dropdown:hover .dropbtn {
   background-color: #8f7a66;

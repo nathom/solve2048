@@ -293,9 +293,7 @@ export default class GameManager {
                     // Leaving it just in case
                     this.weightsPromise = this.inputManager.downloadWeights();
                 }
-                console.log('Downloading weights');
                 let weights = await this.weightsPromise;
-                console.log('Done downloading weights', weights);
                 this.tupleNetwork = wasm.build_ntuple(weights);
             }
 
@@ -303,7 +301,6 @@ export default class GameManager {
             return;
         }
 
-        console.log('Activate on');
         this.inputManager.activationButtonOn();
         if (this.mode === 'expectimax') {
             await this.playExpectimax();
@@ -314,7 +311,6 @@ export default class GameManager {
         } else if (this.mode === 'random') {
             await this.playRandom();
         }
-        console.log('Activate off');
         this.inputManager.activationButtonOff();
     }
 

@@ -173,6 +173,15 @@ export default class KeyboardInputManager {
     handleDropdownEvent(callback)
     {
         const dropdownContent = document.querySelector('.dropdown-content');
+        const dropdownBtn = document.querySelector('.dropbtn');
+
+        dropdownBtn.addEventListener('mouseenter', function() {
+            dropdownContent.style.display = 'block';
+        });
+        dropdownBtn.addEventListener('click', function() {
+            dropdownContent.style.display = 'block';
+        });
+
         dropdownContent.addEventListener('click', event => {
             // Check if the clicked element is a dropdown item (an <a> tag)
             if (event.target.tagName === 'A') {
@@ -183,6 +192,9 @@ export default class KeyboardInputManager {
                 const selectedItem = event.target.id;
                 console.log('selected ', selectedItem);
                 callback(selectedItem);
+
+                // dropdownContent.classList.remove('show');
+                dropdownContent.style.display = 'none';
             }
         });
     };
