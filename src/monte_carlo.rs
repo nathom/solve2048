@@ -1,4 +1,4 @@
-use crate::{Board, Move, Player};
+use crate::{Board, Heuristic, Move, Player};
 use fastrand::Rng;
 // use rayon::prelude::*;
 
@@ -17,7 +17,7 @@ pub struct MonteCarloPlayer {
 }
 
 impl Player for MonteCarloPlayer {
-    fn next_move(&self, b: &Board) -> Option<Move> {
+    fn next_move(&self, b: &Board, _: &impl Heuristic) -> Option<Move> {
         let res = Move::all()
             .iter()
             .map(|&m| (m, self.explore_move(b, m)))

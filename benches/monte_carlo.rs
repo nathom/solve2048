@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use fastrand::Rng;
-use solve2048::{Board, ExpectimaxPlayer, MonteCarloPlayer, Move, Player};
+use solve2048::{Board, ExpectimaxPlayer, HeuristicScoreCache, MonteCarloPlayer, Move, Player};
 
 fn move_left_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
@@ -111,8 +111,9 @@ fn expectimax_calculation(c: &mut Criterion) {
     brd.set(14, 3);
     brd.set(15, 1);
     let player = ExpectimaxPlayer::default();
+    let cache = HeuristicScoreCache::new();
     c.bench_function("expectimax calculation", |b| {
-        b.iter(|| player.next_move(&brd))
+        b.iter(|| player.next_move(&brd, &cache))
     });
 }
 

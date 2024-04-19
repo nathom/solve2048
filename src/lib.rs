@@ -1,17 +1,27 @@
 mod board;
 mod expectimax;
+mod heuristic;
 mod monte_carlo;
 mod ntuple;
 mod player;
-pub use board::{Board, Move};
-pub use expectimax::ExpectimaxPlayer;
+
+use std::cell::RefCell;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::BufWriter;
+use std::sync::Mutex;
+
 use fastrand::Rng;
+use lazy_static::lazy_static;
+use rayon::prelude::*;
+use wasm_bindgen::prelude::*;
+
+pub use board::{Board, Move};
+pub use expectimax::{ExpectimaxPlayer, HeuristicScoreCache};
+pub use heuristic::{Heuristic, NullHeuristic};
 pub use monte_carlo::{MonteCarloMetric, MonteCarloPlayer};
 pub use ntuple::{Feature, MoveRecord, NTuple};
 pub use player::Player;
-use std::fs::File;
-use std::io::BufWriter;
-use wasm_bindgen::prelude::*;
 // pub use wasm_bindgen_rayon::init_thread_pool;
 
 #[global_allocator]
@@ -205,7 +215,12 @@ mod tests {
 
 use std::time::{Duration, Instant};
 
-pub fn play_game<P: Player>(player: &P, max_moves: u32, show_moves: bool) -> (u32, u32) {
+pub fn play_game<P: Player>(
+    player: &P,
+    max_moves: u32,
+    show_moves: bool,
+    heur: &impl Heuristic,
+) -> (u32, u32) {
     let mut b = Board::new();
     let mut rng = Rng::new();
     b.add_random_tile(&mut rng);
@@ -218,7 +233,7 @@ pub fn play_game<P: Player>(player: &P, max_moves: u32, show_moves: bool) -> (u3
     loop {
         let start_time = Instant::now();
 
-        let m = match player.next_move(&b) {
+        let m = match player.next_move(&b, heur) {
             Some(mv) => mv,
             None => break,
         };
@@ -248,12 +263,83 @@ pub fn play_game<P: Player>(player: &P, max_moves: u32, show_moves: bool) -> (u3
 }
 
 pub fn play_monte_carlo(niter: u32, ngames: u32, metric: MonteCarloMetric) {
-    let player = MonteCarloPlayer::new(niter, metric);
+    let player = MonteCarloPlayer::new(niter, metric.clone());
 
     for i in 0..ngames {
-        let (score, max) = play_game(&player, u32::max_value(), false);
+        let (score, max) = play_game(&player, u32::max_value(), false, &NullHeuristic {});
         println!("Game {i}: Score: {score} Max: {max}");
     }
+}
+
+#[derive(Clone, Default)]
+struct Stats {
+    score_total: u32,
+    max_tile_total: u32,
+    moves_total: u32,
+    tile_counter: [u32; 16],
+}
+
+pub fn tdl_fine_tune_expectimax(load_path: &str, save_path: &str, alpha: f32, ngames: u32) {
+    let mut net = NTuple::default();
+    let mut weight_file = File::open(load_path).unwrap();
+    let mut reader = BufReader::new(&mut weight_file);
+    net.load_weights(&mut reader);
+    let player = ExpectimaxPlayer::new(Some(3));
+
+    let mut stats: Mutex<Stats> = Default::default();
+    let batch_size = 20;
+    for n in (1..=ngames).step_by(batch_size) {
+        (0..batch_size).into_par_iter().for_each(|_| {
+            tdl_learn_iter(&player, &net, alpha, &stats);
+        });
+        {
+            let stats_data = stats.lock().unwrap();
+            let max_tile_avg = stats_data.max_tile_total as f32 / batch_size as f32;
+            let score_avg = stats_data.score_total as f32 / batch_size as f32;
+            let moves_avg = stats_data.moves_total as f32 / batch_size as f32;
+            println!("Batch {n}: Score: {score_avg} Max: {max_tile_avg} Moves: {moves_avg}");
+            print_tile_freq(&stats_data.tile_counter);
+        }
+        stats = Default::default();
+    }
+
+    // write bytes to filepath
+    let mut file = File::create(save_path).unwrap();
+    let mut writer = BufWriter::new(&mut file);
+    net.save_weights(&mut writer);
+}
+
+fn tdl_learn_iter(player: &impl Player, net: &NTuple, alpha: f32, stats: &Mutex<Stats>) {
+    let mut path = Vec::with_capacity(20000);
+    let mut rng = Rng::new();
+    let mut b = Board::new();
+    b.add_random_tile(&mut rng);
+    b.add_random_tile(&mut rng);
+    let mut score = 0;
+    let mut moves = 0;
+
+    loop {
+        let mv = player.next_move(&b, net);
+        if mv.is_none() {
+            break;
+        }
+        let mv = mv.unwrap();
+        moves += 1;
+
+        let rec = b.make_move_and_record(mv).unwrap();
+        b.add_random_tile(&mut rng);
+        score += rec.score;
+        path.push(rec);
+    }
+
+    net.backward(&mut path, alpha);
+    path.clear();
+
+    let mut stats = stats.lock().unwrap();
+    stats.score_total += score;
+    stats.max_tile_total += b.max_tile();
+    stats.moves_total += moves;
+    stats.tile_counter[b.log_max_tile() as usize] += 1;
 }
 
 pub fn tdl_learn(save_path: &str, alpha: f32, ngames: u32) {
@@ -278,7 +364,7 @@ pub fn tdl_learn(save_path: &str, alpha: f32, ngames: u32) {
         let mut moves = 0;
 
         loop {
-            let mv = net.next_move(&b);
+            let mv = net.next_move(&b, &NullHeuristic {});
             if mv.is_none() {
                 break;
             }
@@ -349,7 +435,7 @@ extern "C" {
 #[wasm_bindgen]
 pub fn monte_carlo(arr: &[i32]) -> i32 {
     let b = Board::from_arr(arr);
-    let next_move = MonteCarloPlayer::default().next_move(&b);
+    let next_move = MonteCarloPlayer::default().next_move(&b, &NullHeuristic {});
     match next_move {
         Some(m) => m.to_int(),
         None => -1,
@@ -358,8 +444,11 @@ pub fn monte_carlo(arr: &[i32]) -> i32 {
 
 #[wasm_bindgen]
 pub fn expectimax(arr: &[i32]) -> i32 {
+    lazy_static! {
+        static ref CACHE: HeuristicScoreCache = HeuristicScoreCache::new();
+    }
     let b = Board::from_arr(arr);
-    let next_move = ExpectimaxPlayer::default().next_move(&b);
+    let next_move = ExpectimaxPlayer::default().next_move(&b, &*CACHE);
     match next_move {
         Some(m) => m.to_int(),
         None => -1,
@@ -378,7 +467,7 @@ pub fn build_ntuple(weights: &[u8]) -> NTuple {
 pub fn ntuple(net: &NTuple, arr: &[i32]) -> i32 {
     // statically load the network weights
     let b = Board::from_arr(arr);
-    let next_move = net.next_move(&b);
+    let next_move = net.next_move(&b, &NullHeuristic {});
     match next_move {
         Some(m) => m.to_int(),
         None => -1,

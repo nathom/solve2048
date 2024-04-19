@@ -1,4 +1,4 @@
-use crate::{Board, Move, Player};
+use crate::{Board, Heuristic, Move, Player};
 use std::io::{Read, Write};
 use std::mem::size_of;
 use wasm_bindgen::prelude::*;
@@ -108,12 +108,19 @@ impl Feature {
         return index as usize;
     }
 
-    fn update(&mut self, b: &Board, delta: f32) -> f32 {
+    // This does actually mutate self
+    // Just made it like this to update from multiple threads
+    // If there is a race condition it won't be serious in the long run
+    fn update(&self, b: &Board, delta: f32) -> f32 {
         let delta = delta / self.iso.len() as f32;
         let mut value = 0.0;
         for i in 0..8 {
             let index = self.indexof(&self.iso[i], b);
-            self.weights[index] += delta;
+            // SAFETY: is probably safe
+            unsafe {
+                let ptr = (self.weights.as_ptr() as *mut f32).add(index);
+                *ptr += delta;
+            }
             value += self.weights[index];
         }
         return value;
@@ -149,7 +156,7 @@ impl Default for NTuple {
 }
 
 impl Player for NTuple {
-    fn next_move(&self, b: &Board) -> Option<Move> {
+    fn next_move(&self, b: &Board, heur: &impl Heuristic) -> Option<Move> {
         return self.select_best_move(b);
     }
 }
@@ -198,13 +205,9 @@ impl NTuple {
         return self.feats.iter().map(|f| f.estimate(b)).sum::<f32>();
     }
 
-    pub fn update(&mut self, b: &Board, delta: f32) -> f32 {
+    pub fn update(&self, b: &Board, delta: f32) -> f32 {
         let delta = delta / self.feats.len() as f32;
-        let value = self
-            .feats
-            .iter_mut()
-            .map(|f| f.update(b, delta))
-            .sum::<f32>();
+        let value = self.feats.iter().map(|f| f.update(b, delta)).sum::<f32>();
         return value;
     }
 
@@ -231,12 +234,18 @@ impl NTuple {
         return Some(best_move);
     }
 
-    pub fn backward(&mut self, path: &mut Vec<MoveRecord>, alpha: f32) {
+    pub fn backward(&self, path: &mut Vec<MoveRecord>, alpha: f32) {
         let mut target = 0.0;
         path.pop();
         for mv in path.iter().rev() {
             let err = target - self.estimate(&mv.board_after);
             target = mv.score as f32 + self.update(&mv.board_after, alpha * err);
         }
+    }
+}
+
+impl Heuristic for NTuple {
+    fn score(&self, b: &Board) -> f32 {
+        return self.estimate(b);
     }
 }

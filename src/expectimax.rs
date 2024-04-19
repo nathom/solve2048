@@ -1,32 +1,33 @@
-use crate::{Board, Move, Player};
+use crate::{Board, Heuristic, Move, Player};
 use hashlru::SyncCache;
 use lazy_static::lazy_static;
 use rayon::prelude::*;
-use std::collections::HashMap;
 
 lazy_static! {
-    static ref CACHE: HeuristicScoreCache = HeuristicScoreCache::new();
-    // static ref SYNC: SyncCache<Board, f32> = SyncCache::new(1_000_000);
+    // static ref CACHE: HeuristicScoreCache = HeuristicScoreCache::new();
+    static ref SYNC: SyncCache<Board, (u32, f32)> = SyncCache::new(10_000);
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone)]
 pub struct ExpectimaxPlayer {
-    depth_limit: u32,
-    maxdepth: u32,
-    curdepth: u32,
-    cache_hits: u32,
-    moves_simulated: u32,
+    ply: Option<u8>,
+}
+
+impl Default for ExpectimaxPlayer {
+    fn default() -> Self {
+        ExpectimaxPlayer { ply: None }
+    }
 }
 
 impl Player for ExpectimaxPlayer {
-    fn next_move(&self, b: &Board) -> Option<Move> {
+    fn next_move(&self, b: &Board, heur: &impl Heuristic) -> Option<Move> {
         let mut best_move = Move::Left;
         let mut best_score = 0.0;
         let results = Move::all()
-            // .iter()
-            .par_iter()
+            .iter()
+            // .par_iter()
             .map(|&m| {
-                let score = self.move_score(b, m);
+                let score = self.move_score(b, m, heur);
                 (score, m)
             })
             .collect::<Vec<_>>();
@@ -50,17 +51,22 @@ impl ExpectimaxPlayer {
     /// Max depth of cached nodes to avoid excessive memory usage.
     const CACHE_DEPTH_LIMIT: u32 = 15;
 
+    pub fn new(ply: Option<u8>) -> ExpectimaxPlayer {
+        ExpectimaxPlayer { ply }
+    }
+
     /// Returns the expected score of the given move.
-    fn move_score(&self, b: &Board, m: Move) -> f32 {
-        let mut self_copy = Self::default();
-        self_copy.depth_limit = (b.distinct_tiles() - 2).max(3) as u32;
-        // self_copy.depth_limit = 3;
-        let mut map = HashMap::new();
+    pub fn move_score(&self, b: &Board, m: Move, heur: &impl Heuristic) -> f32 {
+        let depth_limit = if let Some(ply) = self.ply {
+            ply as u32
+        } else {
+            (b.distinct_tiles() - 2).max(3) as u32
+        };
 
         let mut b_copy = b.clone();
         if b_copy.make_move(m).is_some() {
             // if the move is valid, explore
-            let res = self_copy.random_player_score(&b_copy, 1.0, &mut map) + 1e-6;
+            let res = self.random_player_score(heur, &b_copy, 1.0, 0, depth_limit) + 1e-6;
             // println!(
             //     "For move {:?}: moves simulated: {} cache size: {}, cache hits: {}",
             //     m,
@@ -76,31 +82,27 @@ impl ExpectimaxPlayer {
 
     /// Computes expected value over all possible random tile placements.
     fn random_player_score(
-        &mut self,
+        &self,
+        heur: &impl Heuristic,
         b: &Board,
         cprob: f32,
-        map: &mut HashMap<Board, (u32, f32)>,
+        depth: u32,
+        depth_limit: u32,
     ) -> f32 {
-        if cprob < Self::CPROB_THRESH_BASE || self.curdepth >= self.depth_limit {
-            self.maxdepth = self.curdepth.max(self.maxdepth);
-            return CACHE.get_score(b);
+        if cprob < Self::CPROB_THRESH_BASE || depth >= depth_limit {
+            // self.maxdepth = self.curdepth.max(self.maxdepth);
+            return heur.score(b);
         }
 
-        if self.curdepth < Self::CACHE_DEPTH_LIMIT {
-            if let Some(&(depth, score)) = map.get(b) {
-                if depth <= self.curdepth {
-                    self.cache_hits += 1;
-                    return score;
-                }
-            }
+        if let Some((cdepth, score)) = SYNC.get(b) {
+            return score;
         }
 
         let num_empty = b.num_empty() as f32;
         let cprob = cprob / num_empty;
 
-        // let mut res = 0.0;
-
-        let res = (0..16)
+        let avg_score = (0..16)
+            // .into_par_iter()
             .into_iter()
             .filter(|&i| b.at(i) == 0)
             .map(|i| {
@@ -111,45 +113,56 @@ impl ExpectimaxPlayer {
                 (b1, b2)
             })
             .map(|(b1, b2)| {
-                let res1 = self.best_move_player_score(&b1, cprob * 0.9, map) * 0.9;
-                let res2 = self.best_move_player_score(&b2, cprob * 0.1, map) * 0.1;
+                let res1 =
+                    self.best_move_player_score(heur, &b1, cprob * 0.9, depth + 1, depth_limit)
+                        * 0.9;
+                let res2 =
+                    self.best_move_player_score(heur, &b2, cprob * 0.1, depth + 1, depth_limit)
+                        * 0.1;
                 res1 + res2
             })
             .sum::<f32>()
             / num_empty;
 
-        if self.curdepth < Self::CACHE_DEPTH_LIMIT {
-            map.insert(b.clone(), (self.curdepth, res));
-        }
+        SYNC.insert(b.clone(), (depth, avg_score));
 
-        res
+        avg_score
     }
 
     fn best_move_player_score(
-        &mut self,
+        &self,
+        heur: &impl Heuristic,
         b: &Board,
         cprob: f32,
-        map: &mut HashMap<Board, (u32, f32)>,
+        depth: u32,
+        depth_limit: u32,
     ) -> f32 {
         let mut best_score = 0.0;
         for m in Move::all() {
             let mut new_board = b.clone();
             if new_board.make_move(m).is_some() {
-                self.curdepth += 1;
-                let score = self.random_player_score(&new_board, cprob, map);
-                self.curdepth -= 1;
+                // self.curdepth += 1;
+                let score =
+                    self.random_player_score(heur, &new_board, cprob, depth + 1, depth_limit);
+                // self.curdepth -= 1;
                 if score > best_score {
                     best_score = score;
                 }
             }
-            self.moves_simulated += 1;
+            // self.moves_simulated += 1;
         }
         best_score
     }
 }
 
-struct HeuristicScoreCache {
+pub struct HeuristicScoreCache {
     row_score_cache: [f32; 1 << 16],
+}
+
+impl Heuristic for HeuristicScoreCache {
+    fn score(&self, b: &Board) -> f32 {
+        self.get_score(b)
+    }
 }
 
 impl HeuristicScoreCache {
@@ -161,7 +174,7 @@ impl HeuristicScoreCache {
     const SCORE_MERGES_WEIGHT: f32 = 700.0;
     const SCORE_EMPTY_WEIGHT: f32 = 270.0;
 
-    fn new() -> Self {
+    pub fn new() -> Self {
         let mut cache = [0.0; 1 << 16];
         for i in 0..1u64 << 16 {
             let mut line = [0 as u8; 4];

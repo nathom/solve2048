@@ -6,10 +6,12 @@ edition = "2021"
 [dependencies]
 lazy_static = "1.4.0"
 wasm-bindgen = "0.2.92"
-rayon = "1"
 fastrand = "2.0.2"
 console_error_panic_hook = "0.1.7"
-crunchy = "0.2.2"
+wee_alloc = "0.4.5"
+rayon = "1"
+hashlru = "0.11"
+# wasm-bindgen-rayon = "1.2"
 
 [dependencies.web-sys]
 web-sys = "0.3.69"
@@ -32,3 +34,9 @@ harness = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+atomics,+bulk-memory,+mutable-globals"]
+
+[unstable]
+build-std = ["panic_abort", "std"]
