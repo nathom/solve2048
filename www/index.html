@@ -126,35 +126,47 @@
       </div>
 
       <p class="game-explanation">
-        <strong class="important">How to play:</strong> Use your
-        <strong>arrow keys</strong> to move the tiles. When two tiles with the
-        same number touch, they <strong>merge into one!</strong>
+        <strong class="important">Random Player</strong> 
+
+        This player simply chooses a random move, and takes it.
+        You'll find that it's not a great strategy, but it's a good baseline to compare other players to. It will almost never win.
+      </p>
+
+      <p class="game-explanation">
+        <strong class="important">Monte Carlo</strong> 
+
+        This player uses the Monte Carlo Tree Search algorithm to choose the best move.
+        It simulates many games from the current state, and chooses the move that leads to the highest average sum of tiles. It should win (achieve 2048) around 75% of the time.
+      </p>
+
+      <p class="game-explanation">
+        <strong class="important">N-Tuple Network</strong> 
+        This player uses an N-Tuple network, which is a primitive form of a neural network
+        that has been shown to work well for 2048. It should win almost 100% of the time,
+        and get the 16384 tile around 60% of the time.
+      </p>
+
+
+      <p class="game-explanation">
+        <strong class="important">Expectimax</strong> 
+        This player uses the Expectimax algorithm to search through all possible game
+        states and choose the move with the highest likely score. An evaluation heuristic
+        that awards points based on various factors, such as merge score, empty tiles,
+        and monotonocity, is used to evaluate the game states. It should achieve
+        the 32768 tile around 30% of the time, but it will be much slower than the other players.
       </p>
       <hr />
+
       <p>
-        <strong class="important">Note:</strong> This site is the official
-        version of 2048. You can play it on your phone via
-        <a href="http://git.io/2048">http://git.io/2048.</a> All other apps or
-        sites are derivatives or fakes, and should be used with caution.
+      Made with Rust 🦀 and WebAssembly. Source code available on
+      <a href="https://github.com/nathom/solve2048">GitHub</a>.
+      <br>
+
+        <a href="https://play2048.co" target="_blank">Play the original 2048</a>
       </p>
-      <hr />
       <p>
-        Created by
-        <a href="http://gabrielecirulli.com" target="_blank"
-          >Gabriele Cirulli.</a
-        >
-        Based on
-        <a
-          href="https://itunes.apple.com/us/app/1024!/id823499224"
-          target="_blank"
-          >1024 by Veewo Studio</a
-        >
-        and conceptually similar to
-        <a href="http://asherv.com/threes/" target="_blank"
-          >Threes by Asher Vollmer.</a
-        >
+© 2024 Nathaniel Thomas.
       </p>
-    </div>
 
     <!-- <script src="./bind_polyfill.js"></script> -->
     <!-- <script src="./classlist_polyfill.js"></script> -->

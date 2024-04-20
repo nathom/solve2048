@@ -7,6 +7,7 @@ server: build
 	python3 -m http.server --directory output
 
 build:
+	npm i
 	wasm-pack build --target web
 	rollup -c
 	if [ ! -f output/index.html ]; then ln -s ../index.html output/index.html; fi

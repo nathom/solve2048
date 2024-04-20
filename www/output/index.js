@@ -1406,6 +1406,7 @@ class GameManager {
                 // Leaving it just in case
                 this.weightsPromise = this.inputManager.downloadWeights();
             }
+            // only one copy of the network should be built
             if (!this.awaitedWeights) {
                 this.awaitedWeights = true;
                 let weights = await this.weightsPromise;
@@ -1414,6 +1415,7 @@ class GameManager {
                 this.inputManager.doneBuildingNetwork();
             }
         }
+        // another coroutine is awaiting the weights and building network
         if (this.tupleNetwork === null) {
             this.inputManager.shakeProgressBar();
             return;
