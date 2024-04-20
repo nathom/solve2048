@@ -384,3 +384,25 @@ pub fn ntuple(net: &NTuple, arr: &[i32]) -> i32 {
         None => -1,
     }
 }
+
+#[wasm_bindgen]
+pub fn random_available_move(arr: &[i32]) -> i32 {
+    let b = Board::from_arr(arr);
+    let mut available = [Move::Up; 4];
+    let mut available_len = 0;
+
+    for m in Move::all() {
+        let res = b.clone().make_move(m);
+        if res.is_some() {
+            available[available_len] = m;
+            available_len += 1;
+        }
+    }
+    if available_len == 0 {
+        return -1;
+    }
+
+    let mut rng = Rng::new();
+    let i = rng.u8(0..available_len as u8);
+    return available[i as usize].to_int();
+}

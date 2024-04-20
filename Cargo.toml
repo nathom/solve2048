@@ -10,6 +10,7 @@ rayon = "1"
 fastrand = "2.0.2"
 console_error_panic_hook = "0.1.7"
 crunchy = "0.2.2"
+wee_alloc = "0.4.5"
 
 [dependencies.web-sys]
 web-sys = "0.3.69"
