@@ -1,5 +1,4 @@
 use crate::{Board, Move, Player};
-use hashlru::SyncCache;
 use lazy_static::lazy_static;
 use rayon::prelude::*;
 use std::collections::HashMap;
