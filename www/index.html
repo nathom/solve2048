@@ -4,6 +4,14 @@
     <meta charset="utf-8" />
     <title>2048.ai</title>
 
+<!-- {{ $css_slider := resources.Get "js/solve2048/www/style/slider.css" | resources.Minify }} -->
+<!-- {{ $css_prog := resources.Get "js/solve2048/www/style/progress.css" | resources.Minify }} -->
+<!-- {{ $css_main := resources.Get "js/solve2048/www/style/main.css" | resources.Minify }} -->
+<!---->
+<!--     <link rel="stylesheet" type="text/css" href="{{ $css_slider.Permalink }}" /> -->
+<!--     <link rel="stylesheet" type="text/css" href="{{ $css_prog.Permalink }}" /> -->
+<!--     <link rel="stylesheet" type="text/css" href="{{ $css_main.Permalink }}" /> -->
+
     <link href="style/main.css" rel="stylesheet" type="text/css" />
     <link rel="shortcut icon" href="favicon.ico" />
     <link rel="apple-touch-icon" href="meta/apple-touch-icon.png" />
@@ -174,9 +182,17 @@
 © 2024 Nathaniel Thomas.
       </p>
 
+    <!-- {{ $js_2048 := resources.Get "js/solve2048/www/output/index.js"  }} -->
+    <!-- {{ $wasm := resources.Get "js/solve2048/www/output/solve2048_bg.wasm"  }} -->
+    <!-- <script> -->
+    <!--   wasm_path = "{{ $wasm.Permalink }}"; -->
+    <!-- </script> -->
+    <!-- <script src="{{ $js_2048.Permalink }}"></script> -->
+
     <script>
       wasm_path = "./solve2048_bg.wasm";
     </script>
     <script src="./index.js"></script>
+
   </body>
 </html>
