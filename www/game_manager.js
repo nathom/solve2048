@@ -1,11 +1,16 @@
 import * as wasm from 'solve2048';
 
 import Grid from './grid';
-import Tile from './tile';
+import Actuator from './html_actuator';
+import InputManager from './keyboard_input_manager';
+import StorageManager from './local_storage_manager';
 
 // convert the below code to ES6 class syntax:
+/**
+ * GameManager.
+ */
 export default class GameManager {
-    constructor(size, InputManager, Actuator, StorageManager, weightsUrl)
+    constructor(size, weightsUrl)
     {
         this.size = size;
         this.inputManager = new InputManager;
@@ -30,6 +35,10 @@ export default class GameManager {
         this.weightsPromise = null;
         this.downloadingWeights = false;
         this.tupleNetwork = null;
+        this.awaitedWeights = false;
+
+        this.perMoveEMA = 0;
+
         this.setup();
     }
 
@@ -37,9 +46,10 @@ export default class GameManager {
     {
         if (this.botPlaying) {
             this.inputManager.shakeAgentsButton();
-            console.log('Cannot change mode while bot is playing');
+            console.warn('Cannot change mode while bot is playing');
             return;
         }
+        let prev_mode = this.mode;
         switch (mode) {
         case 'random-item':
             this.mode = 'random';
@@ -60,14 +70,21 @@ export default class GameManager {
         default:
             this.mode = 'default';
         }
+        if (this.mode !== prev_mode) {
+            this.perMoveEMA = 0;
+        }
         this.inputManager.setSelectedMode(this.mode);
-        console.log('Mode: ', this.mode);
     }
 
     restart()
     {
+        if (this.botPlaying) {
+            this.inputManager.shakeActivateButton();
+            return;
+        }
         this.storageManager.clearGameState();
         this.actuator.continueGame();
+        this.perMoveEMA = 0;
         this.setup();
     }
     keepPlaying()
@@ -218,15 +235,21 @@ export default class GameManager {
         while (!this.over) {
             this.botPlaying = true;
             const arr = this.boardAsArray();
+            const start = performance.now();
             const move = agent(arr);
+            const moveTime = performance.now() - start;
+            this.perMoveEMA = moveTime * 0.05 + this.perMoveEMA * 0.95;
+            this.inputManager.setMsPerMove(this.perMoveEMA);
             if (move === -1) {
-                console.log('No move found');
+                this.perMoveEMA = 0;
                 break;
             }
             // time taken to make a move
-            const start = performance.now();
             this.move(move);
             const timeTaken = performance.now() - start;
+
+            console.log('Average time: ', this.perMoveEMA, 'ms');
+
             if (this.cancelRequest) {
                 this.cancelRequest = false;
                 break;
@@ -268,11 +291,9 @@ export default class GameManager {
     {
         if (!this.botPlaying) return;
         this.cancelRequest = true;
-        console.log('Cancelling request');
         while (this.botPlaying) {
             await new Promise(r => setTimeout(r, 10));
         }
-        console.log('Request cancelled');
     }
 
     async activateAgent()
@@ -283,20 +304,25 @@ export default class GameManager {
             return;
         }
         if (this.mode == 'ntuple' && this.tupleNetwork === null) {
-            if (!this.downloadingWeights) {
-                // ensure only one copy of the weights are ever downloaded
-                this.downloadingWeights = true;
-                if (this.weightsPromise === null) {
-                    console.error('Weights promise is null, recovering');
-                    // This should never run since weightsPromise is set
-                    // when the mode is set to 'ntuple'
-                    // Leaving it just in case
-                    this.weightsPromise = this.inputManager.downloadWeights();
-                }
-                let weights = await this.weightsPromise;
-                this.tupleNetwork = wasm.build_ntuple(weights);
+            // ensure only one copy of the weights are ever downloaded
+            if (this.weightsPromise === null) {
+                console.error('Weights promise is null, recovering');
+                // This should never run since weightsPromise is set
+                // when the mode is set to 'ntuple'
+                // Leaving it just in case
+                this.weightsPromise = this.inputManager.downloadWeights();
             }
-
+            // only one copy of the network should be built
+            if (!this.awaitedWeights) {
+                this.awaitedWeights = true;
+                let weights = await this.weightsPromise;
+                this.inputManager.startBuildingNetwork();
+                this.tupleNetwork = wasm.build_ntuple(weights);
+                this.inputManager.doneBuildingNetwork();
+            }
+        }
+        // another coroutine is awaiting the weights and building network
+        if (this.tupleNetwork === null) {
             this.inputManager.shakeProgressBar();
             return;
         }
@@ -316,7 +342,8 @@ export default class GameManager {
 
     async playRandom()
     {
-        await this.playGame(_ => Math.floor(Math.random() * 4));
+        await this.playGame(
+            _ => wasm.random_available_move(this.boardAsArray()));
     }
 
     async playNtuple()
@@ -401,3 +428,4 @@ export default class GameManager {
         return first.x === second.x && first.y === second.y;
     }
 }
+import Tile from './tile';

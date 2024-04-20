@@ -11,3 +11,10 @@ Only build:
 ```
 make build
 ```
+
+## TODO
+
+- [ ] Add ms/calculation
+- [ ] Make loading bar on new line
+- [ ] Make dropdown mobile friendly
+

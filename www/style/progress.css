@@ -8,6 +8,7 @@
 
 .progress-container {
   display: none;
+  flex-direction: column;
   width: 100%;
   margin-top: 20px;
 }
@@ -20,7 +21,7 @@
   /* position: relative; */
   flex: 1;
   height: 10px;
-  width: 70%;
+  width: 100%;
   /* margin-left: 30%; */
   /* width: 300px; */
   border: 6px solid #eee4da;
