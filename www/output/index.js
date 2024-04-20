@@ -1416,7 +1416,7 @@ class GameManager {
             }
         }
         // another coroutine is awaiting the weights and building network
-        if (this.tupleNetwork === null) {
+        if (this.mode == 'ntuple' && this.tupleNetwork === null) {
             this.inputManager.shakeProgressBar();
             return;
         }

@@ -241,14 +241,13 @@ export default class GameManager {
             this.perMoveEMA = moveTime * 0.05 + this.perMoveEMA * 0.95;
             this.inputManager.setMsPerMove(this.perMoveEMA);
             if (move === -1) {
+                // lost game
                 this.perMoveEMA = 0;
                 break;
             }
             // time taken to make a move
             this.move(move);
             const timeTaken = performance.now() - start;
-
-            console.log('Average time: ', this.perMoveEMA, 'ms');
 
             if (this.cancelRequest) {
                 this.cancelRequest = false;
@@ -322,7 +321,7 @@ export default class GameManager {
             }
         }
         // another coroutine is awaiting the weights and building network
-        if (this.tupleNetwork === null) {
+        if (this.mode == 'ntuple' && this.tupleNetwork === null) {
             this.inputManager.shakeProgressBar();
             return;
         }

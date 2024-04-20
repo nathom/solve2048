@@ -62,7 +62,7 @@
       <div class="agent-settings">
         <div class="generic-label">
           <p id="ms-per-move">0</p>
-          <p>ms per move |</p>
+          <p id='ms-per-move-label'>ms per move</p>
         </div>
         <div class="delay-label-container">
           <p>Delay:</p>
@@ -157,6 +157,12 @@
       </p>
       <hr />
 
+      <p> The actual 2048 game is exactly the same as the 
+      <a href='https://github.com/gabrielecirulli/2048'>original</a>.
+      The prediction engine only has access to the current board state.
+      No information about the next random tile position or value is known.
+      </p>
+
       <p>
       Made with Rust 🦀 and WebAssembly. Source code available on
       <a href="https://github.com/nathom/solve2048">GitHub</a>.
@@ -168,15 +174,6 @@
 © 2024 Nathaniel Thomas.
       </p>
 
-    <!-- <script src="./bind_polyfill.js"></script> -->
-    <!-- <script src="./classlist_polyfill.js"></script> -->
-    <!-- <script src="./animframe_polyfill.js"></script> -->
-    <!-- <script type="module" src="./keyboard_input_manager.js"></script> -->
-    <!-- <script type="module" src="./html_actuator.js"></script> -->
-    <!-- <script src="./grid.js"></script> -->
-    <!-- <script src="./tile.js"></script> -->
-    <!-- <script type="module" src="./local_storage_manager.js"></script> -->
-    <!-- <script type="module" src="./game_manager.js"></script> -->
     <script>
       wasm_path = "./solve2048_bg.wasm";
     </script>

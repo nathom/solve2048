@@ -752,6 +752,10 @@ hr {
   text-align: right;
 }
 
+#ms-per-move-label {
+  flex-shrink: 1;
+}
+
 #ms-delay-text {
   margin-right: 0.5ch;
 }
@@ -803,15 +807,17 @@ hr {
   user-select: none; /* Standard syntax */
 }
 .dropdown-content {
-  display: none;
+  /* display: flex; */
+  flex-direction: column;
   position: absolute;
   background-color: #a89078;
-  min-width: 160px;
+  min-width: 140px;
   box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
-  border-radius: 5px; /* Rounded corners for the dropdown items */
-  z-index: 1000; /* High z-index to ensure dropdown is above other elements */
+  border-radius: 5px;
+  z-index: 1000;
   top: 100%;
-  margin-left: 10px;
+  margin-right: 100%;
+  margin-top: 5px;
 }
 .dropdown-content a {
   color: white;
