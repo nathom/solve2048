@@ -686,6 +686,10 @@ hr {
   text-align: center;
   float: left;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 
 .random-move-button {
@@ -702,15 +706,54 @@ hr {
   float: left;
   margin-left: 10px;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 
 .agent-settings {
   display: flex;
+  flex-direction: row;
+  margin-top: 8px;
 }
 .agent-settings label {
-  margin-top: 8px;
   margin-right: 10px;
   white-space: nowrap;
+}
+
+.generic-label {
+  display: flex;
+  width: 80%;
+  margin-top: 5px;
+}
+
+.delay-label-container {
+  display: flex;
+  width: 50%;
+  margin-top: 5px;
+}
+
+.delay-label-container p {
+  margin-bottom: 0px;
+}
+.generic-label p {
+  margin-bottom: 0px;
+}
+
+#delay-label {
+  text-align: right;
+  width: 3ch;
+  margin-left: 0.5ch;
+}
+
+#ms-per-move {
+  width: 4ch;
+  text-align: right;
+}
+
+#ms-delay-text {
+  margin-right: 0.5ch;
 }
 
 .shake-animation {
@@ -754,6 +797,10 @@ hr {
   text-align: center;
   float: left;
   white-space: nowrap;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Standard syntax */
 }
 .dropdown-content {
   display: none;
@@ -778,9 +825,9 @@ hr {
 .dropdown-content a:hover {
   background-color: #8f7a66; /* Slightly darker on hover */
 }
-.dropdown:hover .dropdown-content {
-  display: block;
-}
+/* .dropdown:hover .dropdown-content { */
+/*   display: block; */
+/* } */
 
 .dropdown:hover .dropbtn {
   background-color: #8f7a66;

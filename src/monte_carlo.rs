@@ -1,6 +1,6 @@
 use crate::{Board, Move, Player};
 use fastrand::Rng;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 
 #[derive(Clone)]
 pub enum MonteCarloMetric {
@@ -51,7 +51,7 @@ impl MonteCarloPlayer {
         b.add_random_tile(&mut rng);
 
         score += (0..self.niter)
-            .into_par_iter()
+            // .into_par_iter()
             .map(|_| self.random_run(&b))
             .sum::<u32>();
 

@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use fastrand::Rng;
-use solve2048::{Board, MonteCarloPlayer, Move};
+use solve2048::{Board, ExpectimaxPlayer, MonteCarloPlayer, Move, Player};
 
 fn move_left_benchmark(c: &mut Criterion) {
     let mut brd = Board::new();
@@ -86,6 +86,36 @@ fn random_run_benchmark(c: &mut Criterion) {
     });
 }
 
+fn expectimax_calculation(c: &mut Criterion) {
+    let mut brd = Board::new();
+    /* load board with the following values:
+     * 128 4 2 0
+     * 256 8 2 0
+     * 512 32 8 2
+     * 16384 64 8 2
+     */
+    brd.set(0, 7);
+    brd.set(1, 2);
+    brd.set(2, 1);
+    brd.set(3, 0);
+    brd.set(4, 8);
+    brd.set(5, 3);
+    brd.set(6, 1);
+    brd.set(7, 0);
+    brd.set(8, 9);
+    brd.set(9, 5);
+    brd.set(10, 3);
+    brd.set(11, 1);
+    brd.set(12, 14);
+    brd.set(13, 6);
+    brd.set(14, 3);
+    brd.set(15, 1);
+    let player = ExpectimaxPlayer::default();
+    c.bench_function("expectimax calculation", |b| {
+        b.iter(|| player.next_move(&brd))
+    });
+}
+
 // fn mc_benchmark(c: &mut Criterion) {
 //     let player = MonteCarloPlayer::default();
 //     c.bench_function("monte carlo single game", |b| {
@@ -100,5 +130,6 @@ criterion_group!(
     move_up_benchmark,
     random_move_benchmark,
     random_run_benchmark,
+    expectimax_calculation,
 );
 criterion_main!(benches);

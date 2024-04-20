@@ -1,10 +1,12 @@
 use crate::{Board, Move, Player};
+use hashlru::SyncCache;
 use lazy_static::lazy_static;
 use rayon::prelude::*;
 use std::collections::HashMap;
 
 lazy_static! {
     static ref CACHE: HeuristicScoreCache = HeuristicScoreCache::new();
+    // static ref SYNC: SyncCache<Board, f32> = SyncCache::new(1_000_000);
 }
 
 #[derive(Clone, Copy, Default)]
@@ -21,6 +23,7 @@ impl Player for ExpectimaxPlayer {
         let mut best_move = Move::Left;
         let mut best_score = 0.0;
         let results = Move::all()
+            // .iter()
             .par_iter()
             .map(|&m| {
                 let score = self.move_score(b, m);
@@ -33,13 +36,6 @@ impl Player for ExpectimaxPlayer {
                 best_move = mv;
             }
         }
-        // for m in Move::all() {
-        //     let score = self.move_score(b, m);
-        //     if score > best_score {
-        //         best_score = score;
-        //         best_move = m;
-        //     }
-        // }
         if best_score == 0.0 {
             None
         } else {

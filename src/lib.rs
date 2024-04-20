@@ -12,6 +12,10 @@ pub use player::Player;
 use std::fs::File;
 use std::io::BufWriter;
 use wasm_bindgen::prelude::*;
+// pub use wasm_bindgen_rayon::init_thread_pool;
+
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[cfg(test)]
 mod tests {
@@ -199,18 +203,29 @@ mod tests {
     }
 }
 
-pub fn play_game<P: Player>(player: &P, show_moves: bool) -> (u32, u32) {
+use std::time::{Duration, Instant};
+
+pub fn play_game<P: Player>(player: &P, max_moves: u32, show_moves: bool) -> (u32, u32) {
     let mut b = Board::new();
     let mut rng = Rng::new();
     b.add_random_tile(&mut rng);
     b.add_random_tile(&mut rng);
 
     let mut score = 0;
+    let mut total_moves = 0;
+    let mut total_time = Duration::new(0, 0);
+
     loop {
+        let start_time = Instant::now();
+
         let m = match player.next_move(&b) {
             Some(mv) => mv,
             None => break,
         };
+
+        let move_time = start_time.elapsed();
+        total_time += move_time;
+        total_moves += 1;
 
         if let Some(s) = b.make_move(m) {
             score += s;
@@ -218,18 +233,25 @@ pub fn play_game<P: Player>(player: &P, show_moves: bool) -> (u32, u32) {
         }
 
         if show_moves {
-            println!("{b}");
+            let move_time = move_time.as_secs_f64();
+            println!("{b}\n{move_time:.2} s");
+        }
+
+        if total_moves >= max_moves {
+            break;
         }
     }
     let max_tile = b.max_tile();
-    return (score, max_tile);
+    let average_time_per_move = total_time.as_secs_f64() / total_moves as f64;
+
+    (score, max_tile)
 }
 
 pub fn play_monte_carlo(niter: u32, ngames: u32, metric: MonteCarloMetric) {
     let player = MonteCarloPlayer::new(niter, metric);
 
     for i in 0..ngames {
-        let (score, max) = play_game(&player, false);
+        let (score, max) = play_game(&player, u32::max_value(), false);
         println!("Game {i}: Score: {score} Max: {max}");
     }
 }

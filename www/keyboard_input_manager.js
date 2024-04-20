@@ -19,6 +19,7 @@ export default class KeyboardInputManager {
         this.weightsUrl = null;
 
         const progressContainer = document.querySelector('.progress-container');
+        this.msPerMove = document.getElementById('ms-per-move');
         this.showNTupleFooter = () => {
             progressContainer.style.display = 'flex';
         };
@@ -173,6 +174,22 @@ export default class KeyboardInputManager {
     handleDropdownEvent(callback)
     {
         const dropdownContent = document.querySelector('.dropdown-content');
+        const dropdownBtn = document.querySelector('.dropbtn');
+
+        dropdownBtn.addEventListener('mouseenter', function() {
+            dropdownContent.style.display = 'block';
+        });
+        dropdownBtn.addEventListener('click', function() {
+            dropdownContent.style.display = 'block';
+        });
+
+        document.addEventListener('click', function(event) {
+            if (!dropdownContent.contains(event.target) &&
+                !dropdownBtn.contains(event.target)) {
+                dropdownContent.style.display = 'none';
+            }
+        });
+
         dropdownContent.addEventListener('click', event => {
             // Check if the clicked element is a dropdown item (an <a> tag)
             if (event.target.tagName === 'A') {
@@ -183,6 +200,9 @@ export default class KeyboardInputManager {
                 const selectedItem = event.target.id;
                 console.log('selected ', selectedItem);
                 callback(selectedItem);
+
+                // dropdownContent.classList.remove('show');
+                dropdownContent.style.display = 'none';
             }
         });
     };
@@ -198,7 +218,6 @@ export default class KeyboardInputManager {
         // Get the button element
         let button = document.querySelector('.dropbtn');
 
-        console.log('Shaking the agents button');
         // Add event listener to trigger the shaking effect
         // Add the CSS class to apply the shake animation
         button.classList.add('shake-animation');
@@ -209,11 +228,26 @@ export default class KeyboardInputManager {
         }, 500);  // Duration of the shake animation (0.5s)
     }
 
+    shakeActivateButton()
+    {
+        // Get the button element
+        let button = document.querySelector('.random-move-button');
+
+        // Add event listener to trigger the shaking effect
+        // Add the CSS class to apply the shake animation
+        button.classList.add('shake-animation');
+
+        // After a short delay, remove the CSS class to stop the animation
+        setTimeout(function() {
+            button.classList.remove('shake-animation');
+        }, 500);  // Duration of the shake animation (0.5s)
+    }
+
+
     shakeProgressBar()
     {
         let bar = document.querySelector('.progress-container');
 
-        console.log('Shaking the progress bar');
         bar.classList.add('shake-animation');
 
         setTimeout(function() {
@@ -301,7 +335,7 @@ export default class KeyboardInputManager {
         delayRange.addEventListener('input', () => {
             // Update the label text content with the new value of the range
             // pad value with spaces to the left
-            delayLabel.textContent = 'Delay: ' + delayRange.value + ' ms';
+            delayLabel.textContent = delayRange.value;
             this.delay = delayRange.value;
         });
     }
@@ -332,5 +366,33 @@ export default class KeyboardInputManager {
             let progressColor = document.querySelector('.color');
             progressColor.style.backgroundColor = 'green';
         }
+    }
+
+    startBuildingNetwork()
+    {
+        let progressText = document.getElementById('download-progress-label');
+        progressText.textContent = `Building network... `;
+    }
+
+    doneBuildingNetwork()
+    {
+        let progressText = document.getElementById('download-progress-label');
+        progressText.textContent = `Done! `;
+    }
+
+    /**
+     * setMsPerMove.
+     *
+     * @param {number} time
+     */
+    setMsPerMove(time)
+    {
+        let rtime;
+        if (time < 1) {
+            rtime = time.toFixed(2);
+        } else {
+            rtime = Math.round(time);
+        }
+        this.msPerMove.textContent = rtime;
     }
 }

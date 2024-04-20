@@ -1,8 +1,6 @@
+import init from 'solve2048';
+
 import GameManager from './game_manager';
-import HTMLActuator from './html_actuator';
-import KeyboardInputManager from './keyboard_input_manager';
-import LocalStorageManager from './local_storage_manager';
-import init, * as wasm from 'solve2048';
 
 function init_game(wasm_path)
 {
@@ -13,9 +11,7 @@ function init_game(wasm_path)
 
         // Wait till the browser is ready to render the game (avoids glitches)
         window.requestAnimationFrame(function() {
-            new GameManager(
-                4, KeyboardInputManager, HTMLActuator, LocalStorageManager,
-                weights_url, wasm);
+            new GameManager(4, weights_url);
         });
     });
 }

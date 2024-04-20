@@ -60,12 +60,20 @@
       </div>
 
       <div class="agent-settings">
-        <label id="delay-label" for="rangeInput">Delay: 100 ms</label>
+        <div class="generic-label">
+          <p id="ms-per-move">0</p>
+          <p>ms per move |</p>
+        </div>
+        <div class="delay-label-container">
+          <p>Delay:</p>
+          <p id="delay-label">100</p>
+          <p id="ms-delay-text">ms</p>
+        </div>
         <input
           id="delay-range"
           type="range"
           min="0"
-          max="1000"
+          max="500"
           value="100"
           step="1"
         />
