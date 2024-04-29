@@ -1,7 +1,8 @@
-@import url(fonts/clear-sans.css);
-@import url(slider.css);
-@import url(spinner.css);
-@import url(progress.css);
+@import "fonts/clear-sans";
+@import "slider";
+@import "spinner";
+@import "progress";
+
 html,
 body {
   margin: 0;
